@@ -18,10 +18,10 @@ abstract class EventPublisher(
     /**
      * Map of subscribers. Key - event type (event class), value - list of subscribers related to the given event type
      */
-    private val internalSubscribers: ConcurrentHashMap<KClass<out Event>, MutableList<EventSubscriber>> = ConcurrentHashMap()
+    private val _subscribers: ConcurrentHashMap<KClass<out Event>, MutableSet<EventSubscriber>> = ConcurrentHashMap()
 ) {
 
-    val subscribers get() = ConcurrentHashMap(internalSubscribers)
+    val subscribers get() = _subscribers.toMap()
 
     /**
      * Registers a given [EventSubscriber] to receive notifications for a specific event type.
@@ -33,10 +33,8 @@ abstract class EventPublisher(
             throw IllegalArgumentException("Subscriber should have at least one registered event type")
         }
         for (event in subscriber.getEventTypes()) {
-            val subscribersByType = internalSubscribers.computeIfAbsent(event) { ArrayList() }
-            if (!subscribersByType.contains(subscriber)) {
-                subscribersByType.add(subscriber)
-            }
+            val subscribersByType = _subscribers.computeIfAbsent(event) { HashSet() }
+            subscribersByType.add(subscriber)
         }
     }
 
@@ -44,8 +42,9 @@ abstract class EventPublisher(
      * Push given [Event] to publisher. Publisher notifies subscribers about the given event
      */
     fun pushEvent(event: Event) {
-        val subscribers: List<EventSubscriber>? = internalSubscribers[event::class]
-        subscribers?.forEach { executor.submit { it.handleEvent(event) } }
+        _subscribers[event::class]?.forEach {
+            executor.submit { it.handleEvent(event) }
+        }
     }
 
     /**

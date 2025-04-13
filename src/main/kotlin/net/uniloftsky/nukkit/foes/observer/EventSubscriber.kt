@@ -21,23 +21,23 @@ abstract class EventSubscriber(
     /**
      * Registry for event handlers, where each [Event] type is associated with a specific handler
      */
-    private val internalHandlers: Map<KClass<out Event>, EventHandler<Event>>
+    private val _handlers: Map<KClass<out Event>, EventHandler<Event>>
 ) {
 
-    val handlers get() = HashMap(internalHandlers)
+    val handlers get() = _handlers.toMap()
 
     /**
      * Returns list of events types the subscriber is subscribed to.
      */
     fun getEventTypes(): List<KClass<out Event>> {
-        return internalHandlers.keys.toList()
+        return _handlers.keys.toList()
     }
 
     /**
      * Process the given [event].
      */
     fun handleEvent(event: Event) {
-        val handler: EventHandler<Event>? = internalHandlers[event::class]
+        val handler: EventHandler<Event>? = _handlers[event::class]
         handler?.handle(event) ?: logger.warning("Cannot find the handler for event ${event.eventName}")
     }
 
